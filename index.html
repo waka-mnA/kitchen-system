@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>注文管理</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1B1917">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="注文管理">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --bg: #1B1917;
+    --surface: #262320;
+    --surface-2: #322D28;
+    --paper: #F3ECDD;
+    --ink: #211D19;
+    --text: #F3ECDD;
+    --text-muted: #A69C8D;
+    --flame: #E8622C;
+    --flame-strong: #FF7A3D;
+    --flame-dim: #3A2A20;
+    --sage: #6FAE8C;
+    --sage-strong: #57C48C;
+    --sage-dim: #223229;
+    --alert: #E2554A;
+    --alert-dim: #3A2422;
+    --border: rgba(243,236,221,0.12);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #F3ECDD;
+      --surface: #FFFDF8;
+      --surface-2: #EAE1CC;
+      --paper: #FFFFFF;
+      --ink: #211D19;
+      --text: #211D19;
+      --text-muted: #766C5D;
+      --flame: #D2571F;
+      --flame-strong: #B8450F;
+      --flame-dim: #F6DCC9;
+      --sage: #3F7A5D;
+      --sage-strong: #2E6047;
+      --sage-dim: #DCEAE1;
+      --alert: #B23B31;
+      --alert-dim: #F5DCD9;
+      --border: rgba(33,29,25,0.12);
+      --shadow: 0 10px 24px rgba(33,29,25,0.12);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F3ECDD;
+    --surface: #FFFDF8;
+    --surface-2: #EAE1CC;
+    --paper: #FFFFFF;
+    --ink: #211D19;
+    --text: #211D19;
+    --text-muted: #766C5D;
+    --flame: #D2571F;
+    --flame-strong: #B8450F;
+    --flame-dim: #F6DCC9;
+    --sage: #3F7A5D;
+    --sage-strong: #2E6047;
+    --sage-dim: #DCEAE1;
+    --alert: #B23B31;
+    --alert-dim: #F5DCD9;
+    --border: rgba(33,29,25,0.12);
+    --shadow: 0 10px 24px rgba(33,29,25,0.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B1917; --surface: #262320; --surface-2: #322D28; --paper: #F3ECDD; --ink: #211D19;
+    --text: #F3ECDD; --text-muted: #A69C8D; --flame: #E8622C; --flame-strong: #FF7A3D;
+    --flame-dim: #3A2A20; --sage: #6FAE8C; --sage-strong: #57C48C; --sage-dim: #223229;
+    --alert: #E2554A; --alert-dim: #3A2422; --border: rgba(243,236,221,0.12); --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  .num { font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif; font-variant-numeric: tabular-nums; }
+
+  #app { height: 100%; display: flex; flex-direction: column; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    flex: none;
+    padding: calc(env(safe-area-inset-top,0px) + 14px) 20px 12px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand .mark {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--flame); display: inline-block; transform: translateY(-1px);
+  }
+  .brand h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: 0.01em; }
+  .clock { font-size: 13px; color: var(--text-muted); }
+  .clock .d { margin-right: 8px; }
+
+  /* ---------- Main content ---------- */
+  main { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+  .screen { display: none; padding: 16px 16px 24px; max-width: 1100px; margin: 0 auto; }
+  .screen.active { display: block; }
+
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 4px 2px 10px; }
+
+  /* ---------- Hub layout: order + kitchen shown together ---------- */
+  .hub-layout { display: flex; flex-direction: column; gap: 22px; }
+  .hub-pane { min-width: 0; }
+  @media (min-width: 900px) {
+    .hub-layout { flex-direction: row; align-items: flex-start; }
+    .hub-pane { flex: 1 1 50%; }
+    .hub-pane + .hub-pane { border-left: 1px solid var(--border); padding-left: 22px; }
+    .hub-scroll { max-height: calc(100vh - 210px); overflow-y: auto; padding-right: 4px; }
+  }
+
+  /* ---------- Order screen ---------- */
+  .order-layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 680px) {
+    .order-layout { grid-template-columns: 1.4fr 1fr; align-items: start; }
+  }
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .menu-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: left;
+    min-height: 84px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    cursor: pointer;
+    color: var(--text);
+    transition: transform 0.08s ease, border-color 0.15s ease;
+  }
+  .menu-btn:active { transform: scale(0.96); }
+  .menu-btn:hover { border-color: var(--flame); }
+  .menu-btn .name { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .menu-btn .price { font-size: 14px; color: var(--flame); font-weight: 600; margin-top: 8px; }
+
+  .cart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    position: sticky; top: 0;
+  }
+  .cart-title { font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+  .cart-title .count { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+  .cart-list { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; }
+  .cart-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border-radius: 10px; padding: 8px 10px;
+  }
+  .cart-row .info { flex: 1; min-width: 0; }
+  .cart-row .info .n { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cart-row .info .p { font-size: 12px; color: var(--text-muted); }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button {
+    width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .stepper .qty { min-width: 20px; text-align: center; font-weight: 700; font-size: 14px; }
+  .cart-empty { color: var(--text-muted); font-size: 13px; padding: 18px 4px; text-align: center; }
+  .cart-total {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 2px;
+  }
+  .cart-total .label { font-size: 13px; color: var(--text-muted); }
+  .cart-total .amount { font-size: 22px; font-weight: 700; }
+  .btn-primary {
+    background: var(--flame); color: #fff; border: none; border-radius: 12px;
+    padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-primary:disabled { background: var(--surface-2); color: var(--text-muted); cursor: not-allowed; }
+  .btn-primary:active:not(:disabled) { background: var(--flame-strong); }
+
+  /* ---------- Empty states ---------- */
+  .empty-state {
+    background: var(--surface); border: 1px dashed var(--border); border-radius: 16px;
+    padding: 36px 20px; text-align: center; color: var(--text-muted);
+  }
+  .empty-state p { margin: 0 0 14px; font-size: 14px; line-height: 1.6; }
+  .link-btn {
+    background: none; border: 1px solid var(--flame); color: var(--flame);
+    padding: 9px 18px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
+    font-family: inherit;
+  }
+
+  /* ---------- Kitchen board ---------- */
+  .kitchen-cols { display: grid; grid-template-columns: 1fr; gap: 18px; }
+  @media (min-width: 1400px) { .kitchen-cols { grid-template-columns: 1fr 1fr; } }
+  .kcol-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .kcol-head .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .kcol-head.pending .dot { background: var(--flame); }
+  .kcol-head.done .dot { background: var(--sage); }
+  .kcol-head h2 { font-size: 15px; font-weight: 700; margin: 0; }
+  .kcol-head .n { font-size: 13px; color: var(--text-muted); margin-left: auto; }
+
+  .ticket {
+    background: var(--paper); color: var(--ink); border-radius: 4px;
+    padding: 14px 16px; margin-bottom: 10px; box-shadow: var(--shadow);
+    position: relative; border-left: 6px solid var(--flame);
+  }
+  .ticket.done { border-left-color: var(--sage); opacity: 0.88; }
+  .ticket .row1 { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .ticket .order-no { font-size: 26px; font-weight: 700; }
+  .ticket .time { font-size: 12px; color: #6b6255; }
+  .ticket ul { list-style: none; margin: 0 0 10px; padding: 0; font-size: 14px; line-height: 1.6; }
+  .ticket ul li { display: flex; justify-content: space-between; }
+  .ticket ul li .q { color: #6b6255; margin-right: 8px; }
+  .ticket .foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .ticket .total { font-size: 13px; font-weight: 700; color: #4a433a; }
+  .ticket-btn {
+    border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 700;
+    cursor: pointer; font-family: inherit; color: #fff;
+  }
+  .ticket-btn.to-done { background: var(--sage-strong); }
+  .ticket-btn.to-pending { background: var(--text-muted); }
+  .kcol-empty { color: var(--text-muted); font-size: 13px; padding: 20px 4px; text-align: center; }
+
+  /* ---------- Menu management ---------- */
+  .menu-form {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--text-muted); }
+  .field input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; font-size: 15px; color: var(--text); font-family: inherit;
+    min-width: 0;
+  }
+  .field.name { flex: 1 1 160px; }
+  .field.price { width: 130px; }
+  .menu-list { display: flex; flex-direction: column; gap: 8px; }
+  .menu-row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+  }
+  .menu-row .n { flex: 1; font-weight: 600; font-size: 15px; }
+  .menu-row .p { font-weight: 600; color: var(--flame); font-size: 14px; }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  .icon-btn.danger { color: var(--alert); border-color: var(--alert-dim); }
+  .edit-row { display: flex; gap: 8px; flex: 1; flex-wrap: wrap; }
+  .edit-row input { width: 100px; }
+  .edit-row input.n-input { width: auto; flex: 1; min-width: 100px; }
+
+  /* ---------- Sales ---------- */
+  .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; margin-bottom: 16px; }
+  .seg button {
+    border: none; background: none; padding: 7px 16px; border-radius: 8px; font-size: 13px;
+    font-weight: 700; color: var(--text-muted); cursor: pointer; font-family: inherit;
+  }
+  .seg button.active { background: var(--flame); color: #fff; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .stat-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; }
+  table.sales-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 14px; overflow: hidden; border: 1px solid var(--border); }
+  table.sales-table th, table.sales-table td { text-align: left; padding: 10px 14px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  table.sales-table th { color: var(--text-muted); font-weight: 700; font-size: 12px; }
+  table.sales-table tr:last-child td { border-bottom: none; }
+  table.sales-table td.num, table.sales-table th.num { text-align: right; }
+  .sales-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .sales-actions .btn-primary, .sales-actions .icon-btn { flex: 1 1 220px; }
+  .ticket.cancelled { border-left-color: var(--alert); opacity: 0.62; }
+  .ticket-btn.cancel { background: var(--alert); color: #fff; }
+  .ticket-btn.cancelled-label { background: var(--surface-2); color: var(--text-muted); cursor: default; }
+  .danger-zone { margin-top: 24px; padding-top: 16px; border-top: 1px dashed var(--border); display: flex; justify-content: flex-end; }
+  .btn-danger-outline {
+    background: none; border: 1px solid var(--alert); color: var(--alert);
+    padding: 9px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+
+  /* ---------- Tab bar ---------- */
+  nav.tabbar {
+    flex: none;
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  nav.tabbar button {
+    flex: 1; background: none; border: none; padding: 10px 4px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--text-muted); font-family: inherit; cursor: pointer; position: relative;
+  }
+  nav.tabbar button .ico { font-size: 20px; line-height: 1; }
+  nav.tabbar button .lb { font-size: 11px; font-weight: 600; }
+  nav.tabbar button.active { color: var(--flame); }
+  nav.tabbar button .badge {
+    position: absolute; top: 4px; right: calc(50% - 20px);
+    background: var(--flame); color: #fff; font-size: 10px; font-weight: 700;
+    min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    padding: 0 4px; font-family: 'Space Grotesk', sans-serif;
+  }
+
+  /* ---------- Toast / confirmation ---------- */
+  #toast-layer { position: fixed; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .stamp {
+    pointer-events: auto;
+    background: var(--paper); color: var(--ink); border-radius: 18px; padding: 28px 36px;
+    text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    border: 3px solid var(--flame);
+    animation: pop 0.28s cubic-bezier(.2,1.4,.4,1);
+  }
+  .stamp .lb { font-size: 13px; color: #6b6255; font-weight: 600; }
+  .stamp .no { font-size: 56px; font-weight: 700; line-height: 1; margin: 6px 0 14px; color: var(--flame-strong); }
+  .stamp button {
+    background: var(--flame); color: #fff; border: none; border-radius: 10px;
+    padding: 10px 22px; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit;
+  }
+  @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 49; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  :focus-visible { outline: 2px solid var(--flame); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand"><span class="mark"></span><h1>注文管理</h1></div>
+    <div class="clock"><span class="d num" id="clock-date"></span><span class="num" id="clock-time"></span></div>
+  </div>
+
+  <main>
+    <!-- ORDER + KITCHEN SCREEN (shown together, no tab switch needed) -->
+    <section class="screen active" id="screen-order">
+      <div class="hub-layout">
+        <div class="hub-pane">
+          <div id="order-empty" class="empty-state" style="display:none;">
+            <p>メニューがまだ登録されていません。<br>先に「メニュー」タブから商品を追加してください。</p>
+            <button class="link-btn" onclick="goTab('menu')">メニューを登録する</button>
+          </div>
+          <div id="order-content" class="order-layout">
+            <div>
+              <div class="section-title">メニューを選ぶ</div>
+              <div class="menu-grid" id="menu-grid"></div>
+            </div>
+            <div class="cart-panel">
+              <div class="cart-title"><span>注文内容</span><span class="count num" id="cart-count"></span></div>
+              <div class="cart-list" id="cart-list"></div>
+              <div class="cart-total">
+                <span class="label">合計</span>
+                <span class="amount num" id="cart-total">¥0</span>
+              </div>
+              <button class="btn-primary" id="confirm-btn" onclick="confirmOrder()" disabled>注文を確定する</button>
+            </div>
+          </div>
+        </div>
+        <div class="hub-pane">
+          <div class="section-title">調理状況</div>
+          <div class="kitchen-cols hub-scroll">
+            <div>
+              <div class="kcol-head pending"><span class="dot"></span><h2>未調理</h2><span class="n num" id="pending-n"></span></div>
+              <div id="pending-list"></div>
+            </div>
+            <div>
+              <div class="kcol-head done"><span class="dot"></span><h2>調理済み</h2><span class="n num" id="done-n"></span></div>
+              <div id="done-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MENU MANAGEMENT SCREEN -->
+    <section class="screen" id="screen-menu">
+      <div class="section-title">商品を追加</div>
+      <div class="menu-form">
+        <div class="field name"><label for="new-name">商品名</label><input id="new-name" type="text" placeholder="例）から揚げ串" maxlength="30"></div>
+        <div class="field price"><label for="new-price">価格（円）</label><input id="new-price" type="number" inputmode="numeric" placeholder="500" min="0" step="10"></div>
+        <button class="btn-primary" style="flex:none;" onclick="addMenuItem()">追加する</button>
+      </div>
+      <div class="section-title">登録済みメニュー</div>
+      <div id="menu-list-empty" class="empty-state" style="display:none;"><p>まだ商品が登録されていません。上のフォームから追加してください。</p></div>
+      <div class="menu-list" id="menu-list"></div>
+    </section>
+
+    <!-- SALES SCREEN -->
+    <section class="screen" id="screen-sales">
+      <div class="seg">
+        <button id="seg-today" class="active" onclick="setSalesRange('today')">本日</button>
+        <button id="seg-all" onclick="setSalesRange('all')">全期間</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">売上合計</div><div class="value num" id="stat-total">¥0</div></div>
+        <div class="stat-card"><div class="label">注文件数</div><div class="value num" id="stat-count">0</div></div>
+        <div class="stat-card"><div class="label">平均単価</div><div class="value num" id="stat-avg">¥0</div></div>
+      </div>
+      <div class="section-title">商品別売上</div>
+      <div id="sales-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table" id="sales-table" style="display:none;">
+        <thead><tr><th>商品名</th><th class="num">数量</th><th class="num">売上</th></tr></thead>
+        <tbody id="sales-tbody"></tbody>
+      </table>
+      <div class="sales-actions">
+        <button class="btn-primary" onclick="exportSalesCsv()">CSVで売上・注文データを保存</button>
+      </div>
+      <div class="danger-zone">
+        <button class="btn-danger-outline" onclick="clearTodayRecords()">本日の注文記録をクリア</button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button data-tab="order" class="active" onclick="goTab('order')"><span class="ico">🧾</span><span class="lb">注文・調理</span><span class="badge" id="kitchen-badge" style="display:none;"></span></button>
+    <button data-tab="menu" onclick="goTab('menu')"><span class="ico">📋</span><span class="lb">メニュー</span></button>
+    <button data-tab="sales" onclick="goTab('sales')"><span class="ico">💴</span><span class="lb">売上</span></button>
+  </nav>
+</div>
+
+<div id="toast-layer"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORE_KEY = "kitchenTruck_v1";
+  var state = null;
+
+  function todayKey(d){
+    d = d || new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+
+  function defaultState(){
+    return {
+      menu: [],
+      orders: [],
+      orderSeq: 0,
+      orderSeqDate: todayKey()
+    };
+  }
+
+  function loadState(){
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return defaultState();
+      var parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return defaultState();
+      parsed.menu = Array.isArray(parsed.menu) ? parsed.menu : [];
+      parsed.orders = Array.isArray(parsed.orders) ? parsed.orders : [];
+      if (typeof parsed.orderSeq !== "number") parsed.orderSeq = 0;
+      if (typeof parsed.orderSeqDate !== "string") parsed.orderSeqDate = todayKey();
+      return parsed;
+    } catch(e){
+      console.error("state load failed", e);
+      return defaultState();
+    }
+  }
+
+  function saveState(){
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+    catch(e){ console.error("state save failed", e); }
+  }
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function yen(n){ return "¥" + Number(n||0).toLocaleString("ja-JP"); }
+
+  // ---------------- cart (in-memory only, not persisted) ----------------
+  var cart = {}; // menuId -> qty
+
+  // ---------------- tabs ----------------
+  function goTab(name){
+    document.querySelectorAll(".screen").forEach(function(s){ s.classList.remove("active"); });
+    document.querySelectorAll("nav.tabbar button").forEach(function(b){ b.classList.remove("active"); });
+    document.getElementById("screen-" + name).classList.add("active");
+    document.querySelector('nav.tabbar button[data-tab="' + name + '"]').classList.add("active");
+    if (name === "sales") renderSales();
+    if (name === "menu") renderMenuManagement();
+    if (name === "order") { renderOrderScreen(); renderKitchen(); }
+  }
+  window.goTab = goTab;
+
+  // ---------------- clock ----------------
+  function tickClock(){
+    var now = new Date();
+    var dateEl = document.getElementById("clock-date");
+    var timeEl = document.getElementById("clock-time");
+    var days = ["日","月","火","水","木","金","土"];
+    dateEl.textContent = (now.getMonth()+1) + "/" + now.getDate() + "(" + days[now.getDay()] + ")";
+    timeEl.textContent = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+  }
+
+  // ---------------- order screen ----------------
+  function renderOrderScreen(){
+    var emptyEl = document.getElementById("order-empty");
+    var contentEl = document.getElementById("order-content");
+    if (state.menu.length === 0){
+      emptyEl.style.display = "block";
+      contentEl.style.display = "none";
+      return;
+    }
+    emptyEl.style.display = "none";
+    contentEl.style.display = "grid";
+
+    var grid = document.getElementById("menu-grid");
+    grid.innerHTML = "";
+    state.menu.forEach(function(item){
+      var btn = document.createElement("button");
+      btn.className = "menu-btn";
+      btn.innerHTML = '<span class="name"></span><span class="price num"></span>';
+      btn.querySelector(".name").textContent = item.name;
+      btn.querySelector(".price").textContent = yen(item.price);
+      btn.onclick = function(){ addToCart(item.id); };
+      grid.appendChild(btn);
+    });
+
+    renderCart();
+  }
+
+  function addToCart(id){
+    cart[id] = (cart[id] || 0) + 1;
+    renderCart();
+  }
+  function changeQty(id, delta){
+    if (!cart[id]) return;
+    cart[id] += delta;
+    if (cart[id] <= 0) delete cart[id];
+    renderCart();
+  }
+  window.changeQty = changeQty;
+
+  function renderCart(){
+    var listEl = document.getElementById("cart-list");
+    var countEl = document.getElementById("cart-count");
+    var totalEl = document.getElementById("cart-total");
+    var confirmBtn = document.getElementById("confirm-btn");
+
+    var ids = Object.keys(cart);
+    var totalQty = 0, totalPrice = 0;
+    listEl.innerHTML = "";
+
+    if (ids.length === 0){
+      listEl.innerHTML = '<div class="cart-empty">商品を選んでカートに追加してください</div>';
+    } else {
+      ids.forEach(function(id){
+        var item = state.menu.find(function(m){ return m.id === id; });
+        if (!item) { delete cart[id]; return; }
+        var qty = cart[id];
+        totalQty += qty;
+        totalPrice += qty * item.price;
+        var row = document.createElement("div");
+        row.className = "cart-row";
+        row.innerHTML =
+          '<div class="info"><div class="n"></div><div class="p"></div></div>' +
+          '<div class="stepper"><button aria-label="減らす">－</button><span class="qty num"></span><button aria-label="増やす">＋</button></div>';
+        row.querySelector(".n").textContent = item.name;
+        row.querySelector(".p").textContent = yen(item.price);
+        row.querySelector(".qty").textContent = qty;
+        var buttons = row.querySelectorAll("button");
+        buttons[0].onclick = function(){ changeQty(id, -1); };
+        buttons[1].onclick = function(){ changeQty(id, 1); };
+        listEl.appendChild(row);
+      });
+    }
+
+    countEl.textContent = totalQty > 0 ? totalQty + "点" : "";
+    totalEl.textContent = yen(totalPrice);
+    confirmBtn.disabled = totalQty === 0;
+  }
+
+  function confirmOrder(){
+    var ids = Object.keys(cart);
+    if (ids.length === 0) return;
+
+    if (state.orderSeqDate !== todayKey()){
+      state.orderSeq = 0;
+      state.orderSeqDate = todayKey();
+    }
+    state.orderSeq += 1;
+    var orderNo = state.orderSeq;
+
+    var items = ids.map(function(id){
+      var item = state.menu.find(function(m){ return m.id === id; });
+      return { menuId: id, name: item ? item.name : "(削除済み商品)", price: item ? item.price : 0, qty: cart[id] };
+    });
+    var total = items.reduce(function(sum, it){ return sum + it.price * it.qty; }, 0);
+
+    var order = {
+      id: uid(),
+      orderNo: orderNo,
+      items: items,
+      total: total,
+      status: "pending",
+      createdAt: Date.now(),
+      dayKey: todayKey()
+    };
+    state.orders.push(order);
+    saveState();
+
+    cart = {};
+    renderCart();
+    renderKitchen();
+    updateKitchenBadge();
+    showStamp(orderNo);
+  }
+  window.confirmOrder = confirmOrder;
+
+  function showStamp(orderNo){
+    var layer = document.getElementById("toast-layer");
+    var scrim = document.createElement("div");
+    scrim.className = "scrim";
+    var stamp = document.createElement("div");
+    stamp.className = "stamp";
+    stamp.innerHTML = '<div class="lb">受付番号</div><div class="no num">#' + orderNo + '</div><button>閉じる</button>';
+    function close(){ layer.innerHTML = ""; }
+    scrim.onclick = close;
+    stamp.querySelector("button").onclick = close;
+    layer.innerHTML = "";
+    layer.appendChild(scrim);
+    layer.appendChild(stamp);
+  }
+
+  // ---------------- kitchen board ----------------
+  function formatTime(ts){
+    var d = new Date(ts);
+    return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function buildTicket(order){
+    var t = document.createElement("div");
+    var cancelled = order.status === "cancelled";
+    t.className = "ticket" + (order.status === "done" ? " done" : "") + (cancelled ? " cancelled" : "");
+    var itemsHtml = order.items.map(function(it){
+      return '<li><span><span class="q">x' + it.qty + '</span>' + escapeHtml(it.name) + '</span><span class="num">' + yen(it.price*it.qty) + '</span></li>';
+    }).join("");
+    t.innerHTML =
+      '<div class="row1"><span class="order-no num">#' + order.orderNo + '</span><span class="time num">' + formatTime(order.createdAt) + '</span></div>' +
+      '<ul>' + itemsHtml + '</ul>' +
+      '<div class="foot"><span class="total num">' + yen(order.total) + '</span></div>';
+    var foot = t.querySelector(".foot");
+    var btn = document.createElement("button");
+    if (cancelled){
+      btn.className = "ticket-btn cancelled-label";
+      btn.textContent = "キャンセル済み";
+      btn.disabled = true;
+    } else {
+      if (order.status === "done"){
+        btn.className = "ticket-btn to-pending";
+        btn.textContent = "未調理に戻す";
+        btn.onclick = function(){ setOrderStatus(order.id, "pending"); };
+      } else {
+        btn.className = "ticket-btn to-done";
+        btn.textContent = "調理完了";
+        btn.onclick = function(){ setOrderStatus(order.id, "done"); };
+      }
+      foot.appendChild(btn);
+      var cancelBtn = document.createElement("button");
+      cancelBtn.className = "ticket-btn cancel";
+      cancelBtn.textContent = "キャンセル";
+      cancelBtn.onclick = function(){ cancelOrder(order.id); };
+      foot.appendChild(cancelBtn);
+      return t;
+    }
+    foot.appendChild(btn);
+    return t;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];
+    });
+  }
+
+  function setOrderStatus(id, status){
+    var order = state.orders.find(function(o){ return o.id === id; });
+    if (!order) return;
+    order.status = status;
+    saveState();
+    renderKitchen();
+    updateKitchenBadge();
+  }
+
+  function cancelOrder(id){
+    var order = state.orders.find(function(o){ return o.id === id; });
+    if (!order || order.status === "cancelled") return;
+    if (!confirm("注文 #" + order.orderNo + " をキャンセルしますか？\nこの注文は売上集計から除外されます。")) return;
+    order.status = "cancelled";
+    order.cancelledAt = Date.now();
+    saveState();
+    renderKitchen();
+    renderSales();
+    updateKitchenBadge();
+  }
+  window.cancelOrder = cancelOrder;
+
+  function renderKitchen(){
+    var pending = state.orders.filter(function(o){ return o.status !== "done" && o.status !== "cancelled"; }).sort(function(a,b){ return a.orderNo - b.orderNo; });
+    var done = state.orders.filter(function(o){ return o.status === "done"; }).sort(function(a,b){ return b.createdAt - a.createdAt; });
+
+    document.getElementById("pending-n").textContent = pending.length + "件";
+    document.getElementById("done-n").textContent = done.length + "件";
+
+    var pendingList = document.getElementById("pending-list");
+    var doneList = document.getElementById("done-list");
+    pendingList.innerHTML = "";
+    doneList.innerHTML = "";
+
+    if (pending.length === 0){
+      pendingList.innerHTML = '<div class="kcol-empty">未調理の注文はありません</div>';
+    } else {
+      pending.forEach(function(o){ pendingList.appendChild(buildTicket(o)); });
+    }
+    if (done.length === 0){
+      doneList.innerHTML = '<div class="kcol-empty">調理済みの注文はありません</div>';
+    } else {
+      done.forEach(function(o){ doneList.appendChild(buildTicket(o)); });
+    }
+  }
+
+  function updateKitchenBadge(){
+    var n = state.orders.filter(function(o){ return o.status !== "done" && o.status !== "cancelled"; }).length;
+    var badge = document.getElementById("kitchen-badge");
+    if (n > 0){ badge.style.display = "flex"; badge.textContent = n > 99 ? "99+" : n; }
+    else { badge.style.display = "none"; }
+  }
+
+  // ---------------- menu management ----------------
+  function addMenuItem(){
+    var nameEl = document.getElementById("new-name");
+    var priceEl = document.getElementById("new-price");
+    var name = nameEl.value.trim();
+    var price = parseInt(priceEl.value, 10);
+    if (!name){ nameEl.focus(); return; }
+    if (isNaN(price) || price < 0){ priceEl.focus(); return; }
+    state.menu.push({ id: uid(), name: name, price: price });
+    saveState();
+    nameEl.value = "";
+    priceEl.value = "";
+    nameEl.focus();
+    renderMenuManagement();
+  }
+  window.addMenuItem = addMenuItem;
+
+  function deleteMenuItem(id){
+    state.menu = state.menu.filter(function(m){ return m.id !== id; });
+    saveState();
+    renderMenuManagement();
+  }
+
+  function startEditMenuItem(id){
+    renderMenuManagement(id);
+  }
+
+  function saveEditMenuItem(id){
+    var row = document.querySelector('.menu-row[data-id="' + id + '"]');
+    var nameVal = row.querySelector(".n-input").value.trim();
+    var priceVal = parseInt(row.querySelector(".p-input").value, 10);
+    if (!nameVal || isNaN(priceVal) || priceVal < 0) return;
+    var item = state.menu.find(function(m){ return m.id === id; });
+    item.name = nameVal;
+    item.price = priceVal;
+    saveState();
+    renderMenuManagement();
+  }
+
+  function renderMenuManagement(editingId){
+    var listEl = document.getElementById("menu-list");
+    var emptyEl = document.getElementById("menu-list-empty");
+    listEl.innerHTML = "";
+    if (state.menu.length === 0){
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+    state.menu.forEach(function(item){
+      var row = document.createElement("div");
+      row.className = "menu-row";
+      row.setAttribute("data-id", item.id);
+      if (editingId === item.id){
+        row.innerHTML =
+          '<div class="edit-row">' +
+            '<input class="n-input" type="text" value="' + escapeHtml(item.name) + '">' +
+            '<input class="p-input" type="number" value="' + item.price + '">' +
+          '</div>';
+        var saveBtn = document.createElement("button");
+        saveBtn.className = "icon-btn";
+        saveBtn.textContent = "保存";
+        saveBtn.onclick = function(){ saveEditMenuItem(item.id); };
+        var cancelBtn = document.createElement("button");
+        cancelBtn.className = "icon-btn";
+        cancelBtn.textContent = "キャンセル";
+        cancelBtn.onclick = function(){ renderMenuManagement(); };
+        row.appendChild(saveBtn);
+        row.appendChild(cancelBtn);
+      } else {
+        var n = document.createElement("div");
+        n.className = "n";
+        n.textContent = item.name;
+        var p = document.createElement("div");
+        p.className = "p num";
+        p.textContent = yen(item.price);
+        var editBtn = document.createElement("button");
+        editBtn.className = "icon-btn";
+        editBtn.textContent = "編集";
+        editBtn.onclick = function(){ startEditMenuItem(item.id); };
+        var delBtn = document.createElement("button");
+        delBtn.className = "icon-btn danger";
+        delBtn.textContent = "削除";
+        delBtn.onclick = function(){
+          if (confirm(item.name + " を削除しますか？")) deleteMenuItem(item.id);
+        };
+        row.appendChild(n);
+        row.appendChild(p);
+        row.appendChild(editBtn);
+        row.appendChild(delBtn);
+      }
+      listEl.appendChild(row);
+    });
+  }
+
+  // ---------------- sales ----------------
+  var salesRange = "today";
+  function setSalesRange(range){
+    salesRange = range;
+    document.getElementById("seg-today").classList.toggle("active", range === "today");
+    document.getElementById("seg-all").classList.toggle("active", range === "all");
+    renderSales();
+  }
+  window.setSalesRange = setSalesRange;
+
+  function renderSales(){
+    var orders = state.orders.filter(function(o){ return o.status !== "cancelled"; });
+    if (salesRange === "today"){
+      var tk = todayKey();
+      orders = orders.filter(function(o){ return o.dayKey === tk; });
+    }
+
+    var total = orders.reduce(function(sum,o){ return sum + o.total; }, 0);
+    var count = orders.length;
+    var avg = count > 0 ? Math.round(total / count) : 0;
+
+    document.getElementById("stat-total").textContent = yen(total);
+    document.getElementById("stat-count").textContent = count;
+    document.getElementById("stat-avg").textContent = yen(avg);
+
+    var byItem = {};
+    orders.forEach(function(o){
+      o.items.forEach(function(it){
+        if (!byItem[it.name]) byItem[it.name] = { qty: 0, revenue: 0 };
+        byItem[it.name].qty += it.qty;
+        byItem[it.name].revenue += it.qty * it.price;
+      });
+    });
+    var rows = Object.keys(byItem).map(function(name){
+      return { name: name, qty: byItem[name].qty, revenue: byItem[name].revenue };
+    }).sort(function(a,b){ return b.revenue - a.revenue; });
+
+    var tbody = document.getElementById("sales-tbody");
+    var table = document.getElementById("sales-table");
+    var emptyEl = document.getElementById("sales-table-empty");
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.qty;
+        tr.children[2].textContent = yen(r.revenue);
+        tbody.appendChild(tr);
+      });
+    }
+  }
+
+  function csvCell(value){
+    var s = String(value == null ? "" : value);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+
+  function downloadCsv(filename, rows){
+    var csv = "\uFEFF" + rows.map(function(row){ return row.map(csvCell).join(","); }).join("\r\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function exportSalesCsv(){
+    var tk = todayKey();
+    var orders = state.orders.filter(function(o){ return o.dayKey === tk; });
+    var activeOrders = orders.filter(function(o){ return o.status !== "cancelled"; });
+    var total = activeOrders.reduce(function(sum,o){ return sum + Number(o.total || 0); }, 0);
+
+    var rows = [];
+    rows.push(["売上データ"]);
+    rows.push(["営業日", tk]);
+    rows.push(["最終売上", total]);
+    rows.push(["有効注文件数", activeOrders.length]);
+    rows.push(["キャンセル件数", orders.filter(function(o){ return o.status === "cancelled"; }).length]);
+    rows.push([]);
+    rows.push(["注文番号","注文日時","状態","商品名","単価","数量","商品売上","注文合計"]);
+
+    orders.sort(function(a,b){ return a.orderNo - b.orderNo; }).forEach(function(o){
+      var statusLabel = o.status === "cancelled" ? "キャンセル" : (o.status === "done" ? "調理済み" : "未調理");
+      o.items.forEach(function(it){
+        rows.push([
+          o.orderNo,
+          new Date(o.createdAt).toLocaleString("ja-JP"),
+          statusLabel,
+          it.name,
+          it.price,
+          it.qty,
+          it.price * it.qty,
+          o.total
+        ]);
+      });
+    });
+
+    var stamp = tk.replace(/-/g, "");
+    downloadCsv("売上データ_" + stamp + ".csv", rows);
+  }
+  window.exportSalesCsv = exportSalesCsv;
+
+  function clearTodayRecords(){
+    var tk = todayKey();
+    var hasToday = state.orders.some(function(o){ return o.dayKey === tk; });
+    if (!hasToday){ alert("本日の注文記録はありません。"); return; }
+    if (!confirm("本日の注文記録をすべて削除します。よろしいですか？")) return;
+    state.orders = state.orders.filter(function(o){ return o.dayKey !== tk; });
+    saveState();
+    renderSales();
+    renderKitchen();
+    updateKitchenBadge();
+  }
+  window.clearTodayRecords = clearTodayRecords;
+
+  // ---------------- init ----------------
+  function init(){
+    state = loadState();
+    tickClock();
+    setInterval(tickClock, 15000);
+    renderOrderScreen();
+    renderKitchen();
+    updateKitchenBadge();
+  }
+  init();
+
+  // PWA / offline support
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function(err){
+        console.warn("Service Worker registration failed", err);
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
