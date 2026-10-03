@@ -584,6 +584,13 @@
         <div class="stat-card"><div class="label">注文件数</div><div class="value num" id="stat-count">0</div></div>
         <div class="stat-card"><div class="label">平均単価</div><div class="value num" id="stat-avg">¥0</div></div>
       </div>
+      <div class="section-title">支払方法別売上</div>
+      <div id="payment-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table" id="payment-sales-table" style="display:none;">
+        <thead><tr><th>支払方法</th><th class="num">数量</th><th class="num">売上</th></tr></thead>
+        <tbody id="payment-sales-tbody"></tbody>
+      </table>
+      <br>
       <div class="section-title">商品別売上</div>
       <div id="sales-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
       <table class="sales-table" id="sales-table" style="display:none;">
@@ -593,16 +600,16 @@
       <br>
       <div class="section-title">時間別集計</div>
       <div id="time-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
-      <table class="sales-table time-summary-table">
-        <thead><tr><th>時間</th><th class="num">注文数（人数）</th><th class="num">売上</th></tr></thead>
-        <tbody id="time-summary-tbody"></tbody>
+      <table class="sales-table time-sales-table" id="time-sales-table" >
+        <thead><tr><th>時間</th><th class="num">注文数（人数）</th></tr></thead>
+        <tbody id="time-sales-tbody"></tbody>
       </table>
       <br>
       <div class="section-title">年代別集計</div>
-      <div id="time-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
-      <table class="sales-table age-summary-table">
+      <div id="age-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table age-sales-table" id="age-sales-table" >
         <thead><tr><th>年代</th><th class="num">注文数（人数）</th><th class="num">売上</th></tr></thead>
-        <tbody id="age-summary-tbody"></tbody>
+        <tbody id="age-sales-tbody"></tbody>
       </table>
       <div class="sales-actions">
         <button class="btn-primary" onclick="exportSalesCsv()">CSVで売上・注文データを保存</button>
@@ -1021,7 +1028,15 @@
     var d = new Date(ts);
     return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
   }
-
+  function getHour(ts){
+    var d = new Date(ts);
+    var h = d.getHours();
+    var hourStr = "";
+    if (h <=11) hourStr = "~11";
+    else if (h >=21) hourStr = "21~";
+    else hourStr = String(h);
+    return hourStr;
+  }
   function updateTivket(order)
   {
 
@@ -1262,6 +1277,7 @@
     document.getElementById("stat-count").textContent = count;
     document.getElementById("stat-avg").textContent = yen(avg);
 
+    //商品別売り上げ
     var byItem = {};
     orders.forEach(function(o){
       o.items.forEach(function(it){
@@ -1290,6 +1306,146 @@
         tr.children[0].textContent = r.name;
         tr.children[1].textContent = r.qty;
         tr.children[2].textContent = yen(r.revenue);
+        tbody.appendChild(tr);
+      });
+    }
+
+    //支払方法別売上
+    var byPayment = {};
+    orders.forEach(function(o)
+    {
+      if (!byPayment[o.userPayment]) byPayment[o.userPayment] = { qty: 0, revenue: 0 };
+      o.items.forEach(function(it){
+        byPayment[o.userPayment].qty += it.qty;
+        byPayment[o.userPayment].revenue += it.qty * it.price;
+      });
+    });
+    var rows = Object.keys(byPayment).map(function(name){
+      return { name: name, qty: byPayment[name].qty, revenue: byPayment[name].revenue };
+    }).sort(function(a,b){ return b.revenue - a.revenue; });
+
+    tbody = document.getElementById("payment-sales-tbody");
+    table = document.getElementById("payment-sales-table");
+    emptyEl = document.getElementById("payment-table-empty");
+    
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.qty;
+        tr.children[2].textContent = yen(r.revenue);
+        tbody.appendChild(tr);
+      });
+    }
+
+    //時間別売上
+    var byTime = {};
+    var ftime = "";
+    orders.forEach(function(o)
+    {
+      ftime = getHour(o.createdAt);
+      if (!byTime[ftime]) byTime[ftime] = { count: 0 };
+      byTime[ftime].count += 1;
+      // o.items.forEach(function(it){
+      //   byTime[ftime].qty += it.qty;
+      //   byTime[ftime].revenue += it.qty * it.price;
+      // });
+    });
+    var rows = Object.keys(byTime).map(function(name){
+      return { name: name, count: byTime[name].count };
+    });//.sort(function(a,b){ return b.revenue - a.revenue; });
+
+    tbody = document.getElementById("time-sales-tbody");
+    table = document.getElementById("time-sales-table");
+    emptyEl = document.getElementById("time-table-empty");
+    
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.count;
+        tbody.appendChild(tr);
+      });
+    }
+  // }
+
+  // function renderAgeSummary(orders)
+  // {
+    // var ages = ["10代","20代","30代","40代","50代","60代"];
+    // var summary = {};
+    // ages.forEach(function(age){ summary[age] = { count: 0, revenue: 0 }; });
+    // orders.forEach(function(o){
+    //   var age = o.userAge || "未選択";
+    //   if (!summary[age]) summary[age] = { count: 0, revenue: 0 };
+    //   summary[age].count += 1;
+    //   summary[age].revenue += Number(o.total || 0);
+    // });
+    // var tbody = document.getElementById("age-summary-tbody");
+    // tbody.innerHTML = "";
+    // ages.forEach(function(age){
+    //   var tr = document.createElement("tr");
+    //   tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+    //   tr.children[0].textContent = age;
+    //   tr.children[1].textContent = summary[age].count;
+    //   tr.children[2].textContent = yen(summary[age].revenue);
+    //   tbody.appendChild(tr);
+    // });
+    // if (summary["未選択"] && summary["未選択"].count > 0){
+    //   var tr = document.createElement("tr");
+    //   tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+    //   tr.children[0].textContent = "未選択（過去データ）";
+    //   tr.children[1].textContent = summary["未選択"].count;
+    //   tr.children[2].textContent = yen(summary["未選択"].revenue);
+    //   tbody.appendChild(tr);
+    // }
+
+
+    //年代別売上
+    var byAge = {};
+    orders.forEach(function(o)
+    {
+      if (!byAge[o.userAge]) byAge[o.userAge] = { count: 0 };
+      byAge[o.userAge].count += 1;
+      // o.items.forEach(function(it){
+      //   byAge[o.userAge].qty += it.qty;
+      //   byAge[o.userAge].revenue += it.qty * it.price;
+      // });
+    });
+    var rows = Object.keys(byAge).map(function(name){
+      return { name: name, count: byAge[name].count };
+    });//.sort(function(a,b){ return b.revenue - a.revenue; });
+
+    tbody = document.getElementById("age-sales-tbody");
+    table = document.getElementById("age-sales-table");
+    emptyEl = document.getElementById("age-table-empty");
+    
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.count;
+        // tr.children[2].textContent = yen(r.revenue);
         tbody.appendChild(tr);
       });
     }
