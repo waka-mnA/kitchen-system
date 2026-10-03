@@ -192,6 +192,13 @@
   .age-btn.active { background: var(--flame); color: #fff; border-color: var(--flame); }
   .age-note { font-size: 11px; margin-top: 6px; color: var(--muted); }
   .age-summary-table { margin-top: 16px; }
+  .payment-selector { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .payment-selector .payment-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--muted); }
+  .payment-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .payment-btn { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 9px 4px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .payment-btn.active { background: var(--flame); color: #fff; border-color: var(--flame); }
+  .payment-note { font-size: 11px; margin-top: 6px; color: var(--muted); }
+  .payment-summary-table { margin-top: 16px; }
   .cart-total {
     display: flex; justify-content: space-between; align-items: baseline;
     border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 2px;
@@ -459,7 +466,7 @@
               <div class="cart-title"><span>注文内容</span><span class="count num" id="cart-count"></span></div>
               <div class="cart-list" id="cart-list"></div>
               <div class="age-selector">
-                <div class="age-label">お客様の年代を選択してください。</div>
+                <div class="age-label">お支払方法</div>
                 <div class="age-options" id="age-options">
                   <button type="button" class="age-btn" data-age="~10代" onclick="selectAge('~10代')">~10代</button>
                   <button type="button" class="age-btn" data-age="20代" onclick="selectAge('20代')">20代</button>
@@ -470,6 +477,13 @@
                   <button type="button" class="age-btn active default" data-age="不明" onclick="selectAge('不明')">不明</button>
                 </div>
                 <!-- <div class="age-note">注文確定前に年代を選択して ください</div> -->
+              </div>
+              <div class="payment-selector">
+                <div class="payment-label">お客様の推定年代</div>
+                <div class="payment-options" id="payment-options">
+                  <button type="button" class="payment-btn" data-payment="現金" onclick="selectPayment('現金')">現金</button>
+                  <button type="button" class="payment-btn active default-payment" data-payment="PayPay" onclick="selectPayment('PayPay')">PayPay</button>
+                </div>
               </div>
               <div class="cart-total">
                 <span class="label">合計</span>
@@ -525,9 +539,18 @@
         <thead><tr><th>商品名</th><th class="num">数量</th><th class="num">売上</th></tr></thead>
         <tbody id="sales-tbody"></tbody>
       </table>
+      <br>
+      <div class="section-title">時間別集計</div>
+      <div id="time-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table time-summary-table">
+        <thead><tr><th>時間</th><th class="num">注文数（人数）</th><th class="num">売上</th></tr></thead>
+        <tbody id="time-summary-tbody"></tbody>
+      </table>
+      <br>
       <div class="section-title">年代別集計</div>
+      <div id="time-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
       <table class="sales-table age-summary-table">
-        <thead><tr><th>年代</th><th class="num">注文数</th><th class="num">売上</th></tr></thead>
+        <thead><tr><th>年代</th><th class="num">注文数（人数）</th><th class="num">売上</th></tr></thead>
         <tbody id="age-summary-tbody"></tbody>
       </table>
       <div class="sales-actions">
@@ -615,6 +638,7 @@
   // ---------------- cart (in-memory only, not persisted) ----------------
   var cart = {}; // menuId -> qty
   var cartAge = "不明"; // selected customer age group for current order
+  var cartPayment = "PayPay";
 
   // ---------------- tabs ----------------
   function goTab(name){
@@ -687,6 +711,17 @@
     renderCart();
   }
   window.selectAge = selectAge;
+
+  function selectPayment(payment){
+    var allowed = ["現金","PayPay"];
+    if (allowed.indexOf(payment) === -1) return;
+    cartPayment = payment;
+    document.querySelectorAll(".payment-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-payment") === payment);
+    });
+    renderCart();
+  }
+  window.selectPayment = selectPayment;
 
   function renderCart(){
     var listEl = document.getElementById("cart-list");
@@ -795,7 +830,7 @@
     var ids = Object.keys(cart);
     if (ids.length === 0) return;
     if (!cartAge){
-      alert("お客様の年代を選択してください。");
+      alert("お客様の推定年代を選択してください。");
       return;
     }
     if (state.orderSeqDate !== todayKey()){
@@ -819,15 +854,19 @@
       status: "pending",
       createdAt: Date.now(),
       dayKey: todayKey(),
-      userAge: cartAge
+      userAge: cartAge,
+      payment: cartPayment
     };
     state.orders.push(order);
     saveState();
 
     cart = {};
     cartAge = "不明";
+    cartPayment = "PayPay";
     document.querySelectorAll(".age-btn").forEach(function(btn){ btn.classList.remove("active"); });
     document.querySelector(".default").classList.add("active");
+    document.querySelectorAll(".payment-btn").forEach(function(btn){ btn.classList.remove("active"); });
+    document.querySelector(".default-payment").classList.add("active");
     renderCart();
     renderKitchen();
     updateKitchenBadge();
@@ -872,6 +911,16 @@
     }).join("");
 
     var userage_alert = "";
+    if (order.userAge == "不明") 
+    {
+      //不明の場合アラートアイコンを表示
+      userage_alert = '<span class="age-warning" onclick="openAgeDialog(\'' + order.id + '\')" title="年代未設定">!</span>';
+    }
+    else{
+      userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
+
+    }
+    var paymentMethod = "PayPay";
     if (order.userAge == "不明") 
     {
       //不明の場合アラートアイコンを表示
