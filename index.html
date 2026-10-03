@@ -404,6 +404,38 @@
   border-color: #333;
 }
 
+.payment-dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  width: min(90vw, 360px);
+}
+
+.dialog-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.payment-options-dialog {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.payment-options-dialog button {
+  padding: 14px 8px;
+  font-size: 18px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+}
+.payment-options-dialog button.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
 .dialog-cancel {
   width: 100%;
   margin-top: 14px;
@@ -437,6 +469,25 @@
   color: #fff;
   font-weight: bold;
   cursor: pointer;
+}
+.payment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: small;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.payment-cash {
+  background: gray;
+}
+.payment-paypay{
+  background: red;
 }
 </style>
 </head>
@@ -585,6 +636,19 @@
     </div>
 
     <button class="dialog-cancel" onclick="closeAgeDialog()">キャンセル</button>
+  </div>
+</div>
+<div id="toast-layer"></div>
+<div id="payment-dialog" class="dialog-overlay" style="display:none;">
+  <div class="payment-dialog">
+    <div class="dialog-title">年代を選択</div>
+
+    <div class="payment-options-dialog">
+      <button onclick="setOrderPayment('現金')">現金</button>
+      <button onclick="setOrderPayment('PayPay')">PayPay</button>
+    </div>
+
+    <button class="dialog-cancel" onclick="closePaymentDialog()">キャンセル</button>
   </div>
 </div>
 <script>
@@ -765,6 +829,7 @@
 
   var editingOrderId = null;
 
+  /*--年代再選択ダイアログ--*/
   function openAgeDialog(orderId) {
     editingOrderId = orderId;
     
@@ -822,9 +887,69 @@
 
     closeAgeDialog();
   }
-
-  
   window.setOrderAge = setOrderAge;
+
+  /*--支払方法再選択ダイアログ--*/
+  function openPaymentDialog(orderId) {
+    editingOrderId = orderId;
+    
+    var order = state.orders.find(function(order) {
+      return order.id === orderId;
+    });
+
+    var dialog = document.getElementById("payment-dialog");
+    if (!dialog) return;
+
+    // いったん全ボタンのactiveを解除
+    dialog.querySelectorAll(".payment-options-dialog button").forEach(function(btn) {
+      btn.classList.remove("active");
+    });
+
+    // 現在の値を取得
+    var currentPayment = order ? order.userPayment : "";
+    // 現在の値と一致するボタンをactiveにする
+    dialog.querySelectorAll(".payment-options-dialog button").forEach(function(btn) {
+      if (btn.textContent === currentPayment) {
+        btn.classList.add("active");
+      }
+    });
+
+    if (dialog) {
+      dialog.style.display = "flex";
+    }
+  }
+  window.openPaymentDialog = openPaymentDialog;
+
+  function closePaymentDialog() {
+    editingOrderId = null;
+
+    var dialog = document.getElementById("payment-dialog");
+    if (dialog) {
+      dialog.style.display = "none";
+    }
+  }
+  window.closePaymentDialog = closePaymentDialog;
+
+  function setOrderPayment(userPayment) {
+    if (!editingOrderId) return;
+
+    var order = state.orders.find(function(order) {
+      return order.id === editingOrderId;
+    });
+
+    if (!order) return;
+
+    order.userPayment = userPayment;
+
+    saveState();
+    renderKitchen();
+    updateKitchenBadge();
+
+    closePaymentDialog();
+  }
+
+  window.setOrderPayment = setOrderPayment;
+
 
   function confirmOrder(){
     var ids = Object.keys(cart);
@@ -855,7 +980,7 @@
       createdAt: Date.now(),
       dayKey: todayKey(),
       userAge: cartAge,
-      payment: cartPayment
+      userPayment: cartPayment
     };
     state.orders.push(order);
     saveState();
@@ -910,29 +1035,24 @@
       return '<li><span><span class="q">x' + it.qty + '</span>' + escapeHtml(it.name) + '</span><span class="num">' + yen(it.price*it.qty) + '</span></li>';
     }).join("");
 
-    var userage_alert = "";
+    var userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
     if (order.userAge == "不明") 
     {
       //不明の場合アラートアイコンを表示
       userage_alert = '<span class="age-warning" onclick="openAgeDialog(\'' + order.id + '\')" title="年代未設定">!</span>';
     }
-    else{
-      userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
 
-    }
-    var paymentMethod = "PayPay";
-    if (order.userAge == "不明") 
+    var paymentMethod = '<span class="payment-button payment-paypay"';
+    console.log(order.userPayment)
+    if (order.userPayment == "現金") 
     {
-      //不明の場合アラートアイコンを表示
-      userage_alert = '<span class="age-warning" onclick="openAgeDialog(\'' + order.id + '\')" title="年代未設定">!</span>';
+      paymentMethod = '<span class="payment-button payment-cash"';
     }
-    else{
-      userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
 
-    }
+    paymentMethod += 'onclick="openPaymentDialog(\'' + order.id + '\')" title="支払方法">' + order.userPayment + '</span>';
 
     t.innerHTML =
-      '<div class="row1"><span class="order-no num">#' + order.orderNo + '</span>'+userage_alert+'<span class="time num">' + formatTime(order.createdAt) + '</span></div>' +
+      '<div class="row1"><span class="order-no num">#' + order.orderNo + '</span>'+userage_alert+paymentMethod+'<span class="time num">' + formatTime(order.createdAt) + '</span></div>' +
       '<ul>' + itemsHtml + '</ul>' +
       '<div class="foot"><span class="total num">' + yen(order.total) + '</span></div>';
     var foot = t.querySelector(".foot");
