@@ -517,7 +517,7 @@
               <div class="cart-title"><span>注文内容</span><span class="count num" id="cart-count"></span></div>
               <div class="cart-list" id="cart-list"></div>
               <div class="age-selector">
-                <div class="age-label">お支払方法</div>
+                <div class="age-label">お客様の推定年代</div>
                 <div class="age-options" id="age-options">
                   <button type="button" class="age-btn" data-age="~10代" onclick="selectAge('~10代')">~10代</button>
                   <button type="button" class="age-btn" data-age="20代" onclick="selectAge('20代')">20代</button>
@@ -530,7 +530,7 @@
                 <!-- <div class="age-note">注文確定前に年代を選択して ください</div> -->
               </div>
               <div class="payment-selector">
-                <div class="payment-label">お客様の推定年代</div>
+                <div class="payment-label">お支払方法</div>
                 <div class="payment-options" id="payment-options">
                   <button type="button" class="payment-btn" data-payment="現金" onclick="selectPayment('現金')">現金</button>
                   <button type="button" class="payment-btn active default-payment" data-payment="PayPay" onclick="selectPayment('PayPay')">PayPay</button>
@@ -665,6 +665,20 @@
   var STORE_KEY = "kitchenTruck_v2";
   var state = null;
   var age_list = ["~10代","20代","30代","40代","50代","60代~","不明"];
+
+  self.addEventListener("activate", event => {
+    event.waitUntil(
+      caches.keys().then(keys => {
+        return Promise.all(
+          keys
+            .filter(key => key !== CACHE_NAME)
+            .map(key => caches.delete(key))
+        );
+      })
+    );
+
+    self.clients.claim();
+  });
 
   function todayKey(d){
     d = d || new Date();
