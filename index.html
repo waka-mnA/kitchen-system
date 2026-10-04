@@ -192,6 +192,13 @@
   .age-btn.active { background: var(--flame); color: #fff; border-color: var(--flame); }
   .age-note { font-size: 11px; margin-top: 6px; color: var(--muted); }
   .age-summary-table { margin-top: 16px; }
+  .payment-selector { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+  .payment-selector .payment-label { font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--muted); }
+  .payment-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .payment-btn { border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 8px; padding: 9px 4px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .payment-btn.active { background: var(--flame); color: #fff; border-color: var(--flame); }
+  .payment-note { font-size: 11px; margin-top: 6px; color: var(--muted); }
+  .payment-summary-table { margin-top: 16px; }
   .cart-total {
     display: flex; justify-content: space-between; align-items: baseline;
     border-top: 1px dashed var(--border); padding-top: 10px; margin-top: 2px;
@@ -397,6 +404,38 @@
   border-color: #333;
 }
 
+.payment-dialog {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  width: min(90vw, 360px);
+}
+
+.dialog-title {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.payment-options-dialog {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.payment-options-dialog button {
+  padding: 14px 8px;
+  font-size: 18px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #fff;
+}
+.payment-options-dialog button.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
 .dialog-cancel {
   width: 100%;
   margin-top: 14px;
@@ -431,6 +470,25 @@
   font-weight: bold;
   cursor: pointer;
 }
+.payment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: small;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+.payment-cash {
+  background: gray;
+}
+.payment-paypay{
+  background: red;
+}
 </style>
 </head>
 <body>
@@ -459,7 +517,7 @@
               <div class="cart-title"><span>注文内容</span><span class="count num" id="cart-count"></span></div>
               <div class="cart-list" id="cart-list"></div>
               <div class="age-selector">
-                <div class="age-label">お客様の年代を選択してください。</div>
+                <div class="age-label">お支払方法</div>
                 <div class="age-options" id="age-options">
                   <button type="button" class="age-btn" data-age="~10代" onclick="selectAge('~10代')">~10代</button>
                   <button type="button" class="age-btn" data-age="20代" onclick="selectAge('20代')">20代</button>
@@ -470,6 +528,13 @@
                   <button type="button" class="age-btn active default" data-age="不明" onclick="selectAge('不明')">不明</button>
                 </div>
                 <!-- <div class="age-note">注文確定前に年代を選択して ください</div> -->
+              </div>
+              <div class="payment-selector">
+                <div class="payment-label">お客様の推定年代</div>
+                <div class="payment-options" id="payment-options">
+                  <button type="button" class="payment-btn" data-payment="現金" onclick="selectPayment('現金')">現金</button>
+                  <button type="button" class="payment-btn active default-payment" data-payment="PayPay" onclick="selectPayment('PayPay')">PayPay</button>
+                </div>
               </div>
               <div class="cart-total">
                 <span class="label">合計</span>
@@ -519,16 +584,32 @@
         <div class="stat-card"><div class="label">注文件数</div><div class="value num" id="stat-count">0</div></div>
         <div class="stat-card"><div class="label">平均単価</div><div class="value num" id="stat-avg">¥0</div></div>
       </div>
+      <div class="section-title">支払方法別売上</div>
+      <div id="payment-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table" id="payment-sales-table" style="display:none;">
+        <thead><tr><th>支払方法</th><th class="num">数量</th><th class="num">売上</th></tr></thead>
+        <tbody id="payment-sales-tbody"></tbody>
+      </table>
+      <br>
       <div class="section-title">商品別売上</div>
       <div id="sales-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
       <table class="sales-table" id="sales-table" style="display:none;">
         <thead><tr><th>商品名</th><th class="num">数量</th><th class="num">売上</th></tr></thead>
         <tbody id="sales-tbody"></tbody>
       </table>
+      <br>
+      <div class="section-title">時間別集計</div>
+      <div id="time-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table time-sales-table" id="time-sales-table" >
+        <thead><tr><th>時間</th><th class="num">注文数（人数）</th></tr></thead>
+        <tbody id="time-sales-tbody"></tbody>
+      </table>
+      <br>
       <div class="section-title">年代別集計</div>
-      <table class="sales-table age-summary-table">
-        <thead><tr><th>年代</th><th class="num">注文数</th><th class="num">売上</th></tr></thead>
-        <tbody id="age-summary-tbody"></tbody>
+      <div id="age-table-empty" class="empty-state" style="display:none;"><p>この期間の売上データがありません。</p></div>
+      <table class="sales-table age-sales-table" id="age-sales-table" >
+        <thead><tr><th>年代</th><th class="num">注文数（人数）</th></tr></thead>
+        <tbody id="age-sales-tbody"></tbody>
       </table>
       <div class="sales-actions">
         <button class="btn-primary" onclick="exportSalesCsv()">CSVで売上・注文データを保存</button>
@@ -552,16 +633,29 @@
     <div class="dialog-title">年代を選択</div>
 
     <div class="age-options-dialog">
-      <button onclick="setOrderAge('10代')">10代</button>
+      <button onclick="setOrderAge('~10代')">~10代</button>
       <button onclick="setOrderAge('20代')">20代</button>
       <button onclick="setOrderAge('30代')">30代</button>
       <button onclick="setOrderAge('40代')">40代</button>
       <button onclick="setOrderAge('50代')">50代</button>
-      <button onclick="setOrderAge('60代')">60代</button>
+      <button onclick="setOrderAge('60代~')">60代~</button>
       <button onclick="setOrderAge('不明')">不明</button>
     </div>
 
     <button class="dialog-cancel" onclick="closeAgeDialog()">キャンセル</button>
+  </div>
+</div>
+<div id="toast-layer"></div>
+<div id="payment-dialog" class="dialog-overlay" style="display:none;">
+  <div class="payment-dialog">
+    <div class="dialog-title">年代を選択</div>
+
+    <div class="payment-options-dialog">
+      <button onclick="setOrderPayment('現金')">現金</button>
+      <button onclick="setOrderPayment('PayPay')">PayPay</button>
+    </div>
+
+    <button class="dialog-cancel" onclick="closePaymentDialog()">キャンセル</button>
   </div>
 </div>
 <script>
@@ -570,6 +664,7 @@
 
   var STORE_KEY = "kitchenTruck_v1";
   var state = null;
+  var age_list = ["~10代","20代","30代","40代","50代","60代~","不明"];
 
   function todayKey(d){
     d = d || new Date();
@@ -615,6 +710,7 @@
   // ---------------- cart (in-memory only, not persisted) ----------------
   var cart = {}; // menuId -> qty
   var cartAge = "不明"; // selected customer age group for current order
+  var cartPayment = "PayPay";
 
   // ---------------- tabs ----------------
   function goTab(name){
@@ -678,7 +774,7 @@
   window.changeQty = changeQty;
 
   function selectAge(age){
-    var allowed = ["~10代","20代","30代","40代","50代","~60代","不明"];
+    var allowed = age_list;//["~10代","20代","30代","40代","50代","60代~","不明"];
     if (allowed.indexOf(age) === -1) return;
     cartAge = age;
     document.querySelectorAll(".age-btn").forEach(function(btn){
@@ -687,6 +783,17 @@
     renderCart();
   }
   window.selectAge = selectAge;
+
+  function selectPayment(payment){
+    var allowed = ["現金","PayPay"];
+    if (allowed.indexOf(payment) === -1) return;
+    cartPayment = payment;
+    document.querySelectorAll(".payment-btn").forEach(function(btn){
+      btn.classList.toggle("active", btn.getAttribute("data-payment") === payment);
+    });
+    renderCart();
+  }
+  window.selectPayment = selectPayment;
 
   function renderCart(){
     var listEl = document.getElementById("cart-list");
@@ -730,6 +837,7 @@
 
   var editingOrderId = null;
 
+  /*--年代再選択ダイアログ--*/
   function openAgeDialog(orderId) {
     editingOrderId = orderId;
     
@@ -787,15 +895,75 @@
 
     closeAgeDialog();
   }
-
-  
   window.setOrderAge = setOrderAge;
+
+  /*--支払方法再選択ダイアログ--*/
+  function openPaymentDialog(orderId) {
+    editingOrderId = orderId;
+    
+    var order = state.orders.find(function(order) {
+      return order.id === orderId;
+    });
+
+    var dialog = document.getElementById("payment-dialog");
+    if (!dialog) return;
+
+    // いったん全ボタンのactiveを解除
+    dialog.querySelectorAll(".payment-options-dialog button").forEach(function(btn) {
+      btn.classList.remove("active");
+    });
+
+    // 現在の値を取得
+    var currentPayment = order ? order.userPayment : "";
+    // 現在の値と一致するボタンをactiveにする
+    dialog.querySelectorAll(".payment-options-dialog button").forEach(function(btn) {
+      if (btn.textContent === currentPayment) {
+        btn.classList.add("active");
+      }
+    });
+
+    if (dialog) {
+      dialog.style.display = "flex";
+    }
+  }
+  window.openPaymentDialog = openPaymentDialog;
+
+  function closePaymentDialog() {
+    editingOrderId = null;
+
+    var dialog = document.getElementById("payment-dialog");
+    if (dialog) {
+      dialog.style.display = "none";
+    }
+  }
+  window.closePaymentDialog = closePaymentDialog;
+
+  function setOrderPayment(userPayment) {
+    if (!editingOrderId) return;
+
+    var order = state.orders.find(function(order) {
+      return order.id === editingOrderId;
+    });
+
+    if (!order) return;
+
+    order.userPayment = userPayment;
+
+    saveState();
+    renderKitchen();
+    updateKitchenBadge();
+
+    closePaymentDialog();
+  }
+
+  window.setOrderPayment = setOrderPayment;
+
 
   function confirmOrder(){
     var ids = Object.keys(cart);
     if (ids.length === 0) return;
     if (!cartAge){
-      alert("お客様の年代を選択してください。");
+      alert("お客様の推定年代を選択してください。");
       return;
     }
     if (state.orderSeqDate !== todayKey()){
@@ -819,15 +987,19 @@
       status: "pending",
       createdAt: Date.now(),
       dayKey: todayKey(),
-      userAge: cartAge
+      userAge: cartAge,
+      userPayment: cartPayment
     };
     state.orders.push(order);
     saveState();
 
     cart = {};
     cartAge = "不明";
+    cartPayment = "PayPay";
     document.querySelectorAll(".age-btn").forEach(function(btn){ btn.classList.remove("active"); });
     document.querySelector(".default").classList.add("active");
+    document.querySelectorAll(".payment-btn").forEach(function(btn){ btn.classList.remove("active"); });
+    document.querySelector(".default-payment").classList.add("active");
     renderCart();
     renderKitchen();
     updateKitchenBadge();
@@ -857,7 +1029,16 @@
     var d = new Date(ts);
     return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
   }
-
+  function getHour(ts){
+    var d = new Date(ts);
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var hourStr = "";
+    if (h <11) hourStr = "~10";
+    else if (h >=21) hourStr = "21~";
+    else hourStr = String(h);
+    return hourStr;
+  }
   function updateTivket(order)
   {
 
@@ -871,19 +1052,24 @@
       return '<li><span><span class="q">x' + it.qty + '</span>' + escapeHtml(it.name) + '</span><span class="num">' + yen(it.price*it.qty) + '</span></li>';
     }).join("");
 
-    var userage_alert = "";
+    var userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
     if (order.userAge == "不明") 
     {
       //不明の場合アラートアイコンを表示
       userage_alert = '<span class="age-warning" onclick="openAgeDialog(\'' + order.id + '\')" title="年代未設定">!</span>';
     }
-    else{
-      userage_alert = '<span class="age-confirmed" onclick="openAgeDialog(\'' + order.id + '\')" title="年代設定済:\'' + order.userAge + '\'">&#10003;</span>';
 
+    var paymentMethod = '<span class="payment-button payment-paypay"';
+    console.log(order.userPayment)
+    if (order.userPayment == "現金") 
+    {
+      paymentMethod = '<span class="payment-button payment-cash"';
     }
 
+    paymentMethod += 'onclick="openPaymentDialog(\'' + order.id + '\')" title="支払方法">' + order.userPayment + '</span>';
+
     t.innerHTML =
-      '<div class="row1"><span class="order-no num">#' + order.orderNo + '</span>'+userage_alert+'<span class="time num">' + formatTime(order.createdAt) + '</span></div>' +
+      '<div class="row1"><span class="order-no num">#' + order.orderNo + '</span>'+userage_alert+paymentMethod+'<span class="time num">' + formatTime(order.createdAt) + '</span></div>' +
       '<ul>' + itemsHtml + '</ul>' +
       '<div class="foot"><span class="total num">' + yen(order.total) + '</span></div>';
     var foot = t.querySelector(".foot");
@@ -1093,6 +1279,7 @@
     document.getElementById("stat-count").textContent = count;
     document.getElementById("stat-avg").textContent = yen(avg);
 
+    //商品別売り上げ
     var byItem = {};
     orders.forEach(function(o){
       o.items.forEach(function(it){
@@ -1124,37 +1311,142 @@
         tbody.appendChild(tr);
       });
     }
-  }
 
-  function renderAgeSummary(orders){
-    var ages = ["10代","20代","30代","40代","50代","60代"];
-    var summary = {};
-    ages.forEach(function(age){ summary[age] = { count: 0, revenue: 0 }; });
-    orders.forEach(function(o){
-      var age = o.userAge || "未選択";
-      if (!summary[age]) summary[age] = { count: 0, revenue: 0 };
-      summary[age].count += 1;
-      summary[age].revenue += Number(o.total || 0);
+    //支払方法別売上
+    var byPayment = {};
+    orders.forEach(function(o)
+    {
+      if (!byPayment[o.userPayment]) byPayment[o.userPayment] = { qty: 0, revenue: 0 };
+      o.items.forEach(function(it){
+        byPayment[o.userPayment].qty += it.qty;
+        byPayment[o.userPayment].revenue += it.qty * it.price;
+      });
     });
-    var tbody = document.getElementById("age-summary-tbody");
+    var rows = Object.keys(byPayment).map(function(name){
+      return { name: name, qty: byPayment[name].qty, revenue: byPayment[name].revenue };
+    }).sort(function(a,b){ return b.revenue - a.revenue; });
+
+    tbody = document.getElementById("payment-sales-tbody");
+    table = document.getElementById("payment-sales-table");
+    emptyEl = document.getElementById("payment-table-empty");
+    
     tbody.innerHTML = "";
-    ages.forEach(function(age){
-      var tr = document.createElement("tr");
-      tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
-      tr.children[0].textContent = age;
-      tr.children[1].textContent = summary[age].count;
-      tr.children[2].textContent = yen(summary[age].revenue);
-      tbody.appendChild(tr);
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.qty;
+        tr.children[2].textContent = yen(r.revenue);
+        tbody.appendChild(tr);
+      });
+    }
+
+    //時間別売上
+    var byTime = {};
+    var ftime = "";
+    orders.forEach(function(o)
+    {
+      ftime = getHour(o.createdAt);
+      if (!byTime[ftime]) byTime[ftime] = { count: 0 };
+      byTime[ftime].count += 1;
     });
-    if (summary["未選択"] && summary["未選択"].count > 0){
-      var tr = document.createElement("tr");
-      tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
-      tr.children[0].textContent = "未選択（過去データ）";
-      tr.children[1].textContent = summary["未選択"].count;
-      tr.children[2].textContent = yen(summary["未選択"].revenue);
-      tbody.appendChild(tr);
+    var rows = Object.keys(byTime).map(function(name){
+      return { name: name, count: byTime[name].count };
+    }).sort(function(a,b)
+    { 
+      var numA = Number(a.name.replace(/~/g, ""));
+      var numB = Number(b.name.replace(/~/g, ""));
+      return numA - numB;
+    });
+
+    tbody = document.getElementById("time-sales-tbody");
+    table = document.getElementById("time-sales-table");
+    emptyEl = document.getElementById("time-table-empty");
+    
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name+"時~";
+        if (r.name == "~10") tr.children[0].textContent = "~11時";
+        tr.children[1].textContent = r.count;
+        tbody.appendChild(tr);
+      });
+    }
+
+    //年代別売上
+    var byAge = {};
+    orders.forEach(function(o)
+    {
+      if (!byAge[o.userAge]) byAge[o.userAge] = { count: 0 };
+      byAge[o.userAge].count += 1;
+    });
+    var rows = Object.keys(byAge).map(function(name){
+      return { name: name, count: byAge[name].count };
+    }).sort(function(a,b){ return b.name  < a.name; });
+
+    tbody = document.getElementById("age-sales-tbody");
+    table = document.getElementById("age-sales-table");
+    emptyEl = document.getElementById("age-table-empty");
+    
+    tbody.innerHTML = "";
+    if (rows.length === 0){
+      table.style.display = "none";
+      emptyEl.style.display = "block";
+    } else {
+      table.style.display = "table";
+      emptyEl.style.display = "none";
+      rows.forEach(function(r){
+        var tr = document.createElement("tr");
+        tr.innerHTML = "<td></td><td class=\"num\"></td>";
+        tr.children[0].textContent = r.name;
+        tr.children[1].textContent = r.count;
+        tbody.appendChild(tr);
+      });
     }
   }
+
+  // function renderAgeSummary(orders){
+  //   var ages = age_list;//["10代","20代","30代","40代","50代","60代"];
+  //   var summary = {};
+  //   ages.forEach(function(age){ summary[age] = { count: 0, revenue: 0 }; });
+  //   orders.forEach(function(o){
+  //     var age = o.userAge || "未選択";
+  //     if (!summary[age]) summary[age] = { count: 0, revenue: 0 };
+  //     summary[age].count += 1;
+  //     summary[age].revenue += Number(o.total || 0);
+  //   });
+  //   var tbody = document.getElementById("age-summary-tbody");
+  //   tbody.innerHTML = "";
+  //   ages.forEach(function(age){
+  //     var tr = document.createElement("tr");
+  //     tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+  //     tr.children[0].textContent = age;
+  //     tr.children[1].textContent = summary[age].count;
+  //     tr.children[2].textContent = yen(summary[age].revenue);
+  //     tbody.appendChild(tr);
+  //   });
+  //   if (summary["未選択"] && summary["未選択"].count > 0){
+  //     var tr = document.createElement("tr");
+  //     tr.innerHTML = "<td></td><td class=\"num\"></td><td class=\"num\"></td>";
+  //     tr.children[0].textContent = "未選択（過去データ）";
+  //     tr.children[1].textContent = summary["未選択"].count;
+  //     tr.children[2].textContent = yen(summary["未選択"].revenue);
+  //     tbody.appendChild(tr);
+  //   }
+  // }
 
   function csvCell(value){
     var s = String(value == null ? "" : value);
@@ -1186,10 +1478,23 @@
     rows.push(["最終売上", total]);
     rows.push(["有効注文件数", activeOrders.length]);
     rows.push(["キャンセル件数", orders.filter(function(o){ return o.status === "cancelled"; }).length]);
+
+    rows.push([]);
+    rows.push(["支払方法別集計"]);
+    var paymentCounts = {};
+    activeOrders.forEach(function(o){
+      var payment = o.userPayment || "未選択";
+      if (!paymentCounts[payment]) paymentCounts[payment] = { count: 0, revenue: 0 };
+      paymentCounts[payment].count += 1;
+      paymentCounts[payment].revenue += Number(o.total || 0);
+    });
+    rows.push(["支払方法","注文数","売上"]);
+    Object.keys(paymentCounts).forEach(function(payment){ rows.push([payment, paymentCounts[payment].count, paymentCounts[payment].revenue]); });
+
     rows.push([]);
     rows.push(["年代別集計"]);
     var ageCounts = {};
-    ["10代","20代","30代","40代","50代","60代"].forEach(function(age){ ageCounts[age] = { count: 0, revenue: 0 }; });
+    ["~10代","20代","30代","40代","50代","60代~"].forEach(function(age){ ageCounts[age] = { count: 0, revenue: 0 }; });
     activeOrders.forEach(function(o){
       var age = o.userAge || "未選択";
       if (!ageCounts[age]) ageCounts[age] = { count: 0, revenue: 0 };
@@ -1198,6 +1503,31 @@
     });
     rows.push(["年代","注文数","売上"]);
     Object.keys(ageCounts).forEach(function(age){ rows.push([age, ageCounts[age].count, ageCounts[age].revenue]); });
+
+    rows.push([]);
+    rows.push(["時間別集計"]);
+    var timeCounts = {};
+    activeOrders.forEach(function(o){
+      var time = getHour(o.createdAt) || "未選択";
+      if (!timeCounts[time]) timeCounts[time] = { count: 0, revenue: 0 };
+      timeCounts[time].count += 1;
+      timeCounts[time].revenue += Number(o.total || 0);
+    });
+    rows.push(["時間","注文数","売上"]);
+    Object.keys(timeCounts).sort(function(a, b) {
+      var numA = Number(a.replace(/~/g, ""));
+      var numB = Number(b.replace(/~/g, ""));
+      return numA - numB;
+    }).forEach(function(time) {
+      var time_str = time+"時~";
+      if (time == "~10") time_str = "~11時";
+      rows.push([
+        time_str,
+        timeCounts[time].count,
+        timeCounts[time].revenue
+      ]);
+    });
+
     rows.push([]);
     rows.push(["注文番号","注文日時","年代","状態","商品名","単価","数量","商品売上","注文合計"]);
 
