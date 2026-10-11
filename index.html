@@ -13,8 +13,8 @@
 <style>
   :root {
     box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    /* padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px); */
 
     --bg: #1B1917;
     --surface: #262320;
@@ -100,8 +100,12 @@
   }
 
   html, body { height: 100%; }
+  html {
+    margin: 0; 
+  }
   body {
     margin: 0;
+    padding: 0;
     background: var(--bg);
     color: var(--text);
     font-family: 'Zen Kaku Gothic New', 'Hiragino Sans', sans-serif;
@@ -111,6 +115,7 @@
   .num { font-family: 'Space Grotesk', 'Zen Kaku Gothic New', sans-serif; font-variant-numeric: tabular-nums; }
 
   #app { height: 100%; display: flex; flex-direction: column; }
+  #app { height: 100dvh; overflow: hidden; }
 
   /* ---------- Top bar ---------- */
   .topbar {
